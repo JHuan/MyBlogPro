@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>【Android training】文件共享 | Just a Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="原文地址：Sharing Files.
+为了能安全的将一个文件提供给另一个APP，你需要配置好你的APP，给文件提供一个安全的句柄。Android 组件 FileProvider 基于XML配置，为文件生成内容URI。
+
+ Tips: FileProvider 已经作为 v4 Support Library的一部分了哟~
+
+声明一个FileProvider定义一个FileProvider需要在你的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【Android training】文件共享">
+<meta property="og:url" content="http://jhuan.gitcafe.io/2015/10/30/【Android training】文件共享/index.html">
+<meta property="og:site_name" content="Just a Blog">
+<meta property="og:description" content="原文地址：Sharing Files.
+为了能安全的将一个文件提供给另一个APP，你需要配置好你的APP，给文件提供一个安全的句柄。Android 组件 FileProvider 基于XML配置，为文件生成内容URI。
+
+ Tips: FileProvider 已经作为 v4 Support Library的一部分了哟~
+
+声明一个FileProvider定义一个FileProvider需要在你的">
+<meta property="og:updated_time" content="2015-12-07T12:33:43.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="【Android training】文件共享">
+<meta name="twitter:description" content="原文地址：Sharing Files.
+为了能安全的将一个文件提供给另一个APP，你需要配置好你的APP，给文件提供一个安全的句柄。Android 组件 FileProvider 基于XML配置，为文件生成内容URI。
+
+ Tips: FileProvider 已经作为 v4 Support Library的一部分了哟~
+
+声明一个FileProvider定义一个FileProvider需要在你的">
+  
+    <link rel="alternative" href="/atom.xml" title="Just a Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+  
+
+</head>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Just a Blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">谈笑有鸿儒</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://jhuan.gitcafe.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="hexo-【Android training】文件共享" class="article article-type-hexo" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2015/10/30/【Android training】文件共享/" class="article-date">
+  <time datetime="2015-10-30T12:12:22.000Z" itemprop="datePublished">2015-10-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      【Android training】文件共享
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>原文地址：<a href="http://developer.android.com/training/secure-file-sharing/index.html" target="_blank" rel="external">Sharing Files</a>.</p>
+<p>为了能安全的将一个文件提供给另一个APP，你需要配置好你的APP，给文件提供一个安全的句柄。Android 组件 <a href="http://developer.android.com/reference/android/support/v4/content/FileProvider.html" target="_blank" rel="external">FileProvider</a> 基于XML配置，为文件生成内容URI。</p>
+<blockquote>
+<p> Tips: <a href="http://developer.android.com/reference/android/support/v4/content/FileProvider.html" target="_blank" rel="external">FileProvider</a> 已经作为 <a href="http://developer.android.com/tools/support-library/features.html#v4" target="_blank" rel="external">v4 Support Library</a>的一部分了哟~</p>
+</blockquote>
+<h2 id="声明一个FileProvider">声明一个FileProvider</h2><p>定义一个FileProvider需要在你的mainfest中添加一个入口。这个入口声明了生成内容URI的authorities以及XML文件的名字。这个XML文件确定了你的APP能分享的目录。<br>以下是个栗子：<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="title">manifest</span> <span class="attribute">xmlns:android</span>=<span class="value">"http://schemas.android.com/apk/res/android"</span></span><br><span class="line">    <span class="attribute">package</span>=<span class="value">"com.example.myapp"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="title">application</span></span><br><span class="line">        <span class="attribute">...</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="title">provider</span></span><br><span class="line">            <span class="attribute">android:name</span>=<span class="value">"android.support.v4.content.FileProvider"</span></span><br><span class="line">            <span class="attribute">android:authorities</span>=<span class="value">"com.example.myapp.fileprovider"</span></span><br><span class="line">            <span class="attribute">android:grantUriPermissions</span>=<span class="value">"true"</span></span><br><span class="line">            <span class="attribute">android:exported</span>=<span class="value">"false"</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="title">meta-data</span></span><br><span class="line">                <span class="attribute">android:name</span>=<span class="value">"android.support.FILE_PROVIDER_PATHS"</span></span><br><span class="line">                <span class="attribute">android:resource</span>=<span class="value">"@xml/filepaths"</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="title">provider</span>&gt;</span></span><br><span class="line">        ...</span><br><span class="line">    <span class="tag">&lt;/<span class="title">application</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="title">manifest</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>在这个栗子中，<a href="http://developer.android.com/guide/topics/manifest/provider-element.html#auth" target="_blank" rel="external">android:authorities</a>属性规定了URL所属的authorities,用于FileProvider生成content uri。meta-data 子元素指向了你想分享出去的XML文件，android:resource指定这个文件的路径和名称（并不包括.xml后缀名哟）</p>
+<h2 id="指定要分享的目录">指定要分享的目录</h2><p>当你把FileProvider加入到你的app的Mainfest中后，你需要指定你所要分享的文件所属目录。需要在你的项目目录下 res/xml/创建filepaths.xml 。在这个文件中通过增加XML元素表示你的目录。以下又是一颗栗子：<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="title">paths</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="title">files-path</span> <span class="attribute">path</span>=<span class="value">"images/"</span> <span class="attribute">name</span>=<span class="value">"myimages"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="title">paths</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>在这个栗子中，files-path 标签共享了你的应用内部存储里的files/. path属性表明分享files/目录下的子目录images/。name属性让FileFileProvider在生成的content URI加上由name指定的路径分隔符。详情可以看看<a href="http://developer.android.com/reference/android/support/v4/content/FileProvider.html" target="_blank" rel="external">FileProvider</a> 为何可以这么做。<br><code>&lt;paths&gt;</code>元素可以有多个子元素，确定多个需要共享的文件夹。除了<code>&lt;files-path&gt;</code>标签之外，还可以用<code>&lt;external-path&gt;</code>元素共享外部存储文件夹，并且还可以用<code>&lt;cache-path&gt;</code>分享内部存储的缓存文件夹。</p>
+<blockquote>
+<p>注意： 只能用XML文件的形式来制定你要分享到文件夹，你不能通过java代码的形式动态加一个文件夹</p>
+</blockquote>
+<p>现在呢，你就有一个完整的FileProvider，它能帮你生成你应用内部存储中的files/目录及其子目录下文件的content URI。<br>再举个栗子，如果你按照上面的代码片段定义了一个FileProvider，然后你请求一个default_image.jpg的URI，FileProvider就会返回如下URI：<br><code>content://com.example.myapp.fileprovider/myimages/default_image.jpg</code></p>
+<h2 id="接收文件分享请求">接收文件分享请求</h2><p>为了能接收请求方APP的文件请求并响应对应的文件content uri，你应该提供一个文件选择Activity。这样的话请求方APP可以通过startActivityForResult启动这个Activity，传递一个带ACTION_PICK的action的Intent，该Activity接收并处理完毕要嗝屁时，就可以通过setResult反馈uri。</p>
+<h2 id="创建一个文件选择的Activity">创建一个文件选择的Activity</h2><p>直接上代码说明：<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="title">manifest</span> <span class="attribute">xmlns:android</span>=<span class="value">"http://schemas.android.com/apk/res/android"</span>&gt;</span></span><br><span class="line">    ...</span><br><span class="line">        <span class="tag">&lt;<span class="title">application</span>&gt;</span></span><br><span class="line">        ...</span><br><span class="line">            <span class="tag">&lt;<span class="title">activity</span></span><br><span class="line">                <span class="attribute">android:name</span>=<span class="value">".FileSelectActivity"</span></span><br><span class="line">                <span class="attribute">android:label</span>=<span class="value">"@"</span><span class="value">File</span> <span class="attribute">Selector</span>" &gt;</span></span><br><span class="line">                <span class="tag">&lt;<span class="title">intent-filter</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="title">action</span></span><br><span class="line">                        <span class="attribute">android:name</span>=<span class="value">"android.intent.action.PICK"</span>/&gt;</span></span><br><span class="line">                        //指定OPENABLE和DEFAULT两种类型</span><br><span class="line">                    <span class="tag">&lt;<span class="title">category</span></span><br><span class="line">                        <span class="attribute">android:name</span>=<span class="value">"android.intent.category.DEFAULT"</span>/&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="title">category</span></span><br><span class="line">                        <span class="attribute">android:name</span>=<span class="value">"android.intent.category.OPENABLE"</span>/&gt;</span></span><br><span class="line">                        //通过mimeType制定所需数据类型</span><br><span class="line">                    <span class="tag">&lt;<span class="title">data</span> <span class="attribute">android:mimeType</span>=<span class="value">"text/plain"</span>/&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="title">data</span> <span class="attribute">android:mimeType</span>=<span class="value">"image/*"</span>/&gt;</span></span><br><span class="line">                <span class="tag">&lt;/<span class="title">intent-filter</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;/<span class="title">activity</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<h2 id="访问分享的文件">访问分享的文件</h2><p>接收方APP会用Intent向请求方发送共享文件的uri，这个Intent将会被传递到请求方的onActivityResult()里。当请求方拿到了文件的cotent uri, 可以通过<a href="http://developer.android.com/reference/java/io/FileDescriptor.html" target="_blank" rel="external">FileDescriptor</a>访问共享文件。<br>在这个过程中，文件访问安全性是得到保证滴。由于content uri不包含目录路径，请求方不能获取到接收方其他的文件。<br>以下是个栗子~<br><figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line">   * <span class="type">When</span> the <span class="type">Activity</span> <span class="keyword">of</span> the app that hosts files sets a <span class="literal">result</span> <span class="keyword">and</span> calls</span><br><span class="line">   * finish(), this <span class="keyword">method</span> <span class="keyword">is</span> invoked. <span class="type">The</span> returned <span class="type">Intent</span> contains the</span><br><span class="line">   * content <span class="type">URI</span> <span class="keyword">of</span> a selected file. <span class="type">The</span> <span class="literal">result</span> code indicates <span class="keyword">if</span> the</span><br><span class="line">   * selection worked <span class="keyword">or</span> <span class="keyword">not</span>.</span><br><span class="line">   */</span><br><span class="line">  @<span class="type">Override</span></span><br><span class="line">  public <span class="type">void</span> onActivityResult(<span class="type">int</span> requestCode, <span class="type">int</span> resultCode,</span><br><span class="line">          <span class="type">Intent</span> returnIntent) &#123;</span><br><span class="line">      // <span class="type">If</span> the selection didn't work</span><br><span class="line">      <span class="keyword">if</span> (resultCode != <span class="type">RESULT_OK</span>) &#123;</span><br><span class="line">          // <span class="type">Exit</span> <span class="keyword">without</span> doing anything <span class="keyword">else</span></span><br><span class="line">          <span class="keyword">return</span>;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          // <span class="type">Get</span> the file's content <span class="type">URI</span> <span class="keyword">from</span> the incoming <span class="type">Intent</span></span><br><span class="line">          <span class="type">Uri</span> returnUri = returnIntent.getData();</span><br><span class="line">          /*</span><br><span class="line">           * <span class="type">Try</span> to open the file <span class="keyword">for</span> <span class="string">"read"</span> access <span class="keyword">using</span> the</span><br><span class="line">           * returned <span class="type">URI</span>. <span class="type">If</span> the file isn't found, write to the</span><br><span class="line">           * error log <span class="keyword">and</span> <span class="keyword">return</span>.</span><br><span class="line">           */</span><br><span class="line">          <span class="keyword">try</span> &#123;</span><br><span class="line">              /*</span><br><span class="line">               * <span class="type">Get</span> the content resolver instance <span class="keyword">for</span> this context, <span class="keyword">and</span> use it</span><br><span class="line">               * to get a <span class="type">ParcelFileDescriptor</span> <span class="keyword">for</span> the file.</span><br><span class="line">               */</span><br><span class="line">              mInputPFD = getContentResolver().openFileDescriptor(returnUri, <span class="string">"r"</span>);</span><br><span class="line">          &#125; catch (<span class="type">FileNotFoundException</span> e) &#123;</span><br><span class="line">              e.printStackTrace();</span><br><span class="line">              <span class="type">Log</span>.e(<span class="string">"MainActivity"</span>, <span class="string">"File not found."</span>);</span><br><span class="line">              <span class="keyword">return</span>;</span><br><span class="line">          &#125;</span><br><span class="line">          // <span class="type">Get</span> a regular file descriptor <span class="keyword">for</span> the file</span><br><span class="line">          <span class="type">FileDescriptor</span> fd = mInputPFD.getFileDescriptor();</span><br><span class="line">          ...</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="获取共享文件的MIME格式">获取共享文件的MIME格式</h2><p>一个文件的数据格式可以表示请求方APP该如何处理该文件内容。我们可以通过调用ContentResolver.getType()来获取共享文件的数据类型，这个方法反馈该文件的MIME类型。<strong>FileProvider默认用文件的后缀名来判断文件所属数据类型</strong>。<br>以下是个栗子：<br><figure class="highlight vbnet"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * <span class="keyword">Get</span> the file<span class="comment">'s content URI from the incoming Intent, then</span></span><br><span class="line"> * <span class="keyword">get</span> the file<span class="comment">'s MIME type</span></span><br><span class="line"> */</span><br><span class="line">Uri returnUri = returnIntent.getData();</span><br><span class="line"><span class="built_in">String</span> mimeType = getContentResolver().<span class="built_in">getType</span>(returnUri);</span><br></pre></td></tr></table></figure></p>
+<h2 id="获取共享文件的名字和大小">获取共享文件的名字和大小</h2><p>FileProvider 有着query() 接口的默认实现，返回一个带着文件大小和名字的Curosr。默认返回两列：</p>
+<ul>
+<li>DISPLAY_NAME<br>  文件名，返回值与File.getName()相同</li>
+<li>SIZE<br>文件大小，返回值和File.length()相同</li>
+</ul>
+<p>以下就是个获取的栗子：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span><br><span class="line">    * Get the file's content URI from the incoming Intent,</span><br><span class="line">    * then query the server app to get the file's display name</span><br><span class="line">    * and size.</span><br><span class="line">    */</span></span><br><span class="line">   Uri returnUri = returnIntent.getData();</span><br><span class="line">   Cursor returnCursor =</span><br><span class="line">           getContentResolver().query(returnUri, <span class="keyword">null</span>, <span class="keyword">null</span>, <span class="keyword">null</span>, <span class="keyword">null</span>);</span><br><span class="line">   <span class="comment">/*</span><br><span class="line">    * Get the column indexes of the data in the Cursor,</span><br><span class="line">    * move to the first row in the Cursor, get the data,</span><br><span class="line">    * and display it.</span><br><span class="line">    */</span></span><br><span class="line">   <span class="keyword">int</span> nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);</span><br><span class="line">   <span class="keyword">int</span> sizeIndex = returnCursor.getColumnIndex(OpenableColumns.<span class="keyword">SIZE</span>);</span><br><span class="line">   returnCursor.moveToFirst();</span><br><span class="line">   TextView nameView = (TextView) findViewById(R.id.filename_text);</span><br><span class="line">   TextView sizeView = (TextView) findViewById(R.id.filesize_text);</span><br><span class="line">   nameView.setText(returnCursor.getString(nameIndex));</span><br><span class="line">   sizeView.setText(<span class="keyword">Long</span>.toString(returnCursor.getLong(sizeIndex)));</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://jhuan.gitcafe.io/2015/10/30/【Android training】文件共享/" data-id="cije95mlm0004vc1n0s0x5t5e" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Android-training-翻译/">Android training 翻译</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/11/05/【Android training】允许其他应用拉起你的应用/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          【Android training】引导到另一个APP
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/10/30/【Android training】引导到另一个APP/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">【Android training】引导到另一个APP</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Android-training-翻译/">Android training 翻译</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/感悟/">感悟</a><span class="tag-list-count">1</span></li></ul>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Android-training-翻译/" style="font-size: 20px;">Android training 翻译</a> <a href="/tags/感悟/" style="font-size: 10px;">感悟</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">十一月 2015</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/10/">十月 2015</a><span class="archive-list-count">3</span></li></ul>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recents</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2015/12/24/序/">序</a>
+          </li>
+        
+          <li>
+            <a href="/2015/11/05/【Android training】允许其他应用拉起你的应用/">【Android training】引导到另一个APP</a>
+          </li>
+        
+          <li>
+            <a href="/2015/10/30/【Android training】文件共享/">【Android training】文件共享</a>
+          </li>
+        
+          <li>
+            <a href="/2015/10/30/【Android training】引导到另一个APP/">【Android training】引导到另一个APP</a>
+          </li>
+        
+          <li>
+            <a href="/2015/10/15/Hexo使用笔记（一）/">Hexo使用笔记（一）</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2016 barryjiang<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+     <div class="share">
+	<div class="bshare-custom">
+	<div class="bsPromo bsPromo2"></div>
+	<a title="分享到" href="http://www.bShare.cn/" id="bshare-shareto" class="bshare-more">分享到</a>
+	<a title="分享到微信" class="bshare-weixin" href="javascript:void(0);"></a>
+	<a title="分享到豆瓣" class="bshare-douban" href="javascript:void(0);"></a>
+	<a title="分享到QQ好友" class="bshare-qqim" href="javascript:void(0);"></a>
+	<a title="分享到新浪微博" class="bshare-sinaminiblog" href="javascript:void(0);"></a><a title="更多平台" class="bshare-more bshare-more-icon more-style-addthis"></a>
+	<span class="BSHARE_COUNT bshare-share-count" style="float: none;">43K</span>
+	</div>
+	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#style=-1&amp;uuid=&amp;pophcol=2&amp;lang=zh"></script>
+	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/bshareC0.js"></script>
+</div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+  <script src="/fancybox/jquery.fancybox.pack.js" type="text/javascript"></script>
+
+
+<script src="/js/script.js" type="text/javascript"></script>
+
+  </div>
+</body>
+</html>
