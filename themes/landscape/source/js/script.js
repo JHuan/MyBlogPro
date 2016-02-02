@@ -32,6 +32,8 @@
   });
 
   // Share
+
+  
   $('body').on('click', function(){
     $('.article-share-box.on').removeClass('on');
   }).on('click', '.article-share-link', function(e){
@@ -95,6 +97,7 @@
 
     window.open(this.href, 'article-share-box-window-' + Date.now(), 'width=500,height=450');
   });
+
 
   // Caption
   $('.article-entry').each(function(i){

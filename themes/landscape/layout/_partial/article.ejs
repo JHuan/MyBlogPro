@@ -23,7 +23,19 @@
       <% } %>
     </div>
     <footer class="article-footer">
-      <a data-url="<%- post.permalink %>" data-id="<%= post._id %>" class="article-share-link">Share</a>
+      <%- partial('post/share') %>
+      <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+      <script type="text/javascript" charset="utf-8">
+        $(document).ready(function(){
+          bShare.addEntry({
+          title: "<%- post.permalink %>",
+          url: "<%- post.permalink %>"
+          });
+        });
+      </script>
+      <br>
+      <br>
+      <br>
       <% if (post.comments && config.disqus_shortname){ %>
         <a href="<%- post.permalink %>#disqus_thread" class="article-comment-link">Comments</a>
       <% } %>
