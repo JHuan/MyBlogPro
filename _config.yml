@@ -3,7 +3,7 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Just a Blog
+title: JHuan
 subtitle: 谈笑有鸿儒
 description: 
 author: barryjiang
@@ -12,7 +12,7 @@ timezone:
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: http://jhuan.gitcafe.io/
+url: http://Jhuan.coding.me/JHuan/
 root: /
 permalink: :year/:month/:day/:id/
 permalink_defaults:
@@ -69,4 +69,4 @@ theme: landscape
 ## Docs: http://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: https://gitcafe.com/JHuan/JHuan.git,gitcafe-pages
+  repo: https://git.coding.net/Jhuan/JHuan.git,coding-pages
