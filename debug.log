@@ -28,3 +28,6 @@
 {"name":"hexo","hostname":"BARRYJIANG-MC0","pid":14148,"level":30,"msg":"Deploying: \u001b[35mgit\u001b[39m","time":"2018-04-23T13:30:57.782Z","v":0}
 {"name":"hexo","hostname":"BARRYJIANG-MC0","pid":14148,"level":30,"msg":"Clearing .deploy folder...","time":"2018-04-23T13:30:57.787Z","v":0}
 {"name":"hexo","hostname":"BARRYJIANG-MC0","pid":14148,"level":30,"msg":"Copying files from public folder...","time":"2018-04-23T13:30:57.815Z","v":0}
+{"name":"hexo","hostname":"BARRYJIANG-MC0","pid":14148,"level":30,"msg":"Good bye","time":"2018-04-23T13:33:58.574Z","v":0}
+{"name":"hexo","hostname":"BARRYJIANG-MC0","pid":14148,"level":30,"msg":"Deploy done: \u001b[35mgit\u001b[39m","time":"2018-04-23T13:33:58.578Z","v":0}
+{"name":"hexo","hostname":"BARRYJIANG-MC0","pid":14148,"level":20,"msg":"Database saved","time":"2018-04-23T13:33:58.578Z","v":0}
