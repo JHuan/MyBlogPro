@@ -63,20 +63,153 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-真相" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="hexo-挖VerticalViewPager+RecyclerView滑动冲突的祖坟！" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2017/11/28/cjatc0vx80006pkso7ahyvpam/" class="article-date">
-  <time datetime="2017-11-28T13:03:33.000Z" itemprop="datePublished">2017-11-28</time>
+    <a href="/2018/01/03/cjgc9hck300006csob4ju9oft/" class="article-date">
+  <time datetime="2018-01-03T13:21:22.000Z" itemprop="datePublished">2018-01-03</time>
 </a>
     
   </div>
   <div class="article-inner">
     
     
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/01/03/cjgc9hck300006csob4ju9oft/">挖VerticalViewPager+RecyclerView滑动冲突的祖坟！</a>
+    </h1>
+  
+
+      </header>
+    
     <div class="article-entry" itemprop="articleBody">
       
-        <h1 id="真相"><a href="#真相" class="headerlink" title="真相"></a>真相</h1><hr>
-<p>每年总结这个习惯还是很难改的哈，每到年底总喜欢算算流水账，感慨下人生无常感恩下生命中遇到的人balala…倒也不是腻烦了输出鸡汤和讨厌矫情，但是今年所经历的事情流水账和矫情是无法描述了。已然接近而立之年，矫情和鸡汤只是逃避现实的手段了，知行合一、活在当下才是主旋律。但在此之前，还是很有必要定性下最近几年奠基的认知基础，对我来说才是第一步。虽说思考人生这种东西没有止境，但所谓的四十不惑在我看来只是懒得想了而已，但不能成为拖延的借口，该阐释该记录的，写下来再说。</p>
+        <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
+
+
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>某个阳光明媚到忧伤的午后，突然收到一个诡异的bug提醒，简单明了的写着<br><strong>弹幕区域无法滑动！</strong><br>一开始无法重现还以为是操作失误之类，后来发现的一个现象让人毛骨悚然:<br>为啥竖屏下弹幕区域的滑动如丝流畅但横屏下已经成为bug？是卢本伟写的代码么？<br><img src="https://yunpan.oa.tencent.com/note/api/file/getImage?fileId=5a4b79a06f0b932c360e8821" alt=""></p>
+<h1 id="思考过程"><a href="#思考过程" class="headerlink" title="思考过程"></a>思考过程</h1><p>复盘这个查bug的过程，大致可分为<strong>定位问题范围</strong>，<strong>定位debug方向</strong>，<strong>关键节点断点调试</strong>，<strong>根据异常信息假设</strong>，<strong>根据正确的假设找根因</strong>。</p>
+<h2 id="定位问题范围"><a href="#定位问题范围" class="headerlink" title="定位问题范围"></a>定位问题范围</h2><p>首先，上来先查看提交日志以及历史构建版本验证，看看是哪个小坏蛋提交的bug呢？一看傻眼，是新版本播放器进行重构时引入的bug，视图层级有了不小的变动：<br>1.重构前<br><img src="https://yunpan.oa.tencent.com/note/api/file/getImage?fileId=5a4b77f36f0b932c360e881e" alt=""></p>
+<p>2.重构后<br><img src="https://yunpan.oa.tencent.com/note/api/file/getImage?fileId=5a4b78656f0b932c360e881f" alt=""></p>
+<p><em>ps：这里为了简化问题背景聚焦bug本身，不过多详细描述需求背景，其变更以及实现方式选型，可以后续讨论。这里的VerticalViewpager名如其意，就是竖直方向的Viewpager。</em></p>
+<p>虽然可以获知是Viewpager+RecyclerView的滑动冲突问题，但目前就只能止步于此，无法更进一步获知具体是哪行代码哪个文件改动产生的bug了。</p>
+<h2 id="定位debug方向"><a href="#定位debug方向" class="headerlink" title="定位debug方向"></a>定位debug方向</h2><p>ok，目前我们知道了Viewpager+RecyclerView的滑动冲突问题，那么…..<br>并没有什么卵用妈蛋这个不查日志就知道了好么┴┴︵╰（‵□′）╯︵┴┴</p>
+<p>冷静冷静，方向很关键，一时找不到方向时，先补充下基础知识开拓思路是很有效的。</p>
+<h3 id="Viewgroup事件分发机制（简略版）"><a href="#Viewgroup事件分发机制（简略版）" class="headerlink" title="Viewgroup事件分发机制（简略版）"></a>Viewgroup事件分发机制（简略版）</h3><p>先简单过一遍基础的事件分发机制用到的方法，欲了解详情这里有个博文还不错，可以配合官方文档服用，<a href="https://www.jianshu.com/p/38015afcdb58" target="_blank" rel="noopener">Android事件分发机制详解</a>。</p>
+<p>一般而言，我们接触的最多是这三个函数：</p>
+<ul>
+<li><strong>boolean dispatchTouchEvent (MotionEvent event)</strong><br>Pass the touch screen motion event down to the target view, or this view if it is the target.</li>
+</ul>
+<p><strong>Parameters</strong><br><em>event</em>    MotionEvent: The motion event to be dispatched.<br><strong>Returns</strong><br><em>boolean</em>    True if the event was handled by the view, false otherwise.</p>
+<ul>
+<li><strong>boolean onInterceptTouchEvent (MotionEvent ev)</strong><br>Implement this method to intercept all touch screen motion events. This allows you to watch events as they are dispatched to your children, and take ownership of the current gesture at any point.</li>
+</ul>
+<p><strong>Parameters</strong><br><em>ev</em>    MotionEvent: The motion event being dispatched down the hierarchy.<br><strong>Returns</strong><br><em>boolean</em>    Return true to steal motion events from the children and have them dispatched to this ViewGroup through onTouchEvent(). The current target will receive an ACTION_CANCEL event, and no further messages will be delivered here.</p>
+<ul>
+<li><strong>boolean onTouchEvent (MotionEvent event)</strong><br>Implement this method to handle touch screen motion events.</li>
+</ul>
+<p>If this method is used to detect click actions, it is recommended that the actions be performed by implementing and calling performClick(). This will ensure consistent system behavior, including:</p>
+<p><strong>Parameters</strong><br><em>event</em>    MotionEvent: The motion event.<br><strong>Returns</strong><br><em>boolean</em>    True if the event was handled, false otherwise.</p>
+<p>三者之间的关系可以用一段伪代码描述：<br><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 点击事件产生后，会直接调用dispatchTouchEvent（）方法</span></span><br><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">boolean</span> <span class="title">dispatchTouchEvent</span><span class="params">(MotionEvent ev)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//代表是否消耗事件</span></span><br><span class="line">    <span class="keyword">boolean</span> consume = <span class="keyword">false</span>;</span><br><span class="line">  </span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (onInterceptTouchEvent(ev)) &#123;</span><br><span class="line">    <span class="comment">//如果onInterceptTouchEvent()返回true则代表当前View拦截了点击事件</span></span><br><span class="line">    <span class="comment">//则该点击事件则会交给当前View进行处理</span></span><br><span class="line">    <span class="comment">//即调用onTouchEvent (）方法去处理点击事件</span></span><br><span class="line">      consume = onTouchEvent (ev) ;</span><br><span class="line"></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">//如果onInterceptTouchEvent()返回false则代表当前View不拦截点击事件</span></span><br><span class="line">      <span class="comment">//则该点击事件则会继续传递给它的子元素</span></span><br><span class="line">      <span class="comment">//子元素的dispatchTouchEvent（）就会被调用，重复上述过程</span></span><br><span class="line">      <span class="comment">//直到点击事件被最终处理为止</span></span><br><span class="line">      consume = child.dispatchTouchEvent (ev) ;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> consume;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure></p>
+<p>ok，这里我们知道了父ViewGroup最先收到事件并判断是否要拦截事件，如果拦截下来了，由父ViewGroup消耗这个事件，子view就压根收不到事件了。<br>那么就有同学要问了，那么子view是不是就没有翻身的机会了，根本无法阻止无脑的父ViewGroup拦截自己的事件？<br>当然不会这么搞啦~！真正的源码里，ViewGroup实现的dispatchTouchEvent里有这么一段代码用来决定是否真的拦截事件：<br><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Check for interception.</span></span><br><span class="line">          <span class="keyword">final</span> <span class="keyword">boolean</span> intercepted;</span><br><span class="line">          <span class="keyword">if</span> (actionMasked == MotionEvent.ACTION_DOWN</span><br><span class="line">                  || mFirstTouchTarget != <span class="keyword">null</span>) &#123;</span><br><span class="line">              <span class="keyword">final</span> <span class="keyword">boolean</span> disallowIntercept = (mGroupFlags &amp; FLAG_DISALLOW_INTERCEPT) != <span class="number">0</span>;</span><br><span class="line">              <span class="keyword">if</span> (!disallowIntercept) &#123;</span><br><span class="line">                  intercepted = onInterceptTouchEvent(ev);</span><br><span class="line">                  ev.setAction(action); <span class="comment">// restore action in case it was changed</span></span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                  intercepted = <span class="keyword">false</span>;</span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              <span class="comment">// There are no touch targets and this action is not an initial down</span></span><br><span class="line">              <span class="comment">// so this view group continues to intercept touches.</span></span><br><span class="line">              intercepted = <span class="keyword">true</span>;</span><br><span class="line">          &#125;</span><br></pre></td></tr></table></figure></p>
+<p>重点关注下这行代码</p>
+<blockquote>
+<p>   final boolean disallowIntercept = (mGroupFlags &amp; FLAG_DISALLOW_INTERCEPT) != 0;</p>
+</blockquote>
+<p>这里可以注意到，会通过mGroupFlags里是否有FLAG_DISALLOW_INTERCEPT这个标志位来确定是否要拦截，那么这个标志位什么时候会被设置呢？<br>动动你们的小手指，alt+f7走起！查找它的引用很快看到：</p>
+<figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">requestDisallowInterceptTouchEvent</span><span class="params">(<span class="keyword">boolean</span> disallowIntercept)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (disallowIntercept == ((mGroupFlags &amp; FLAG_DISALLOW_INTERCEPT) != <span class="number">0</span>)) &#123;</span><br><span class="line">            <span class="comment">// We're already in this state, assume our ancestors are too</span></span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (disallowIntercept) &#123;</span><br><span class="line">            mGroupFlags |= FLAG_DISALLOW_INTERCEPT;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            mGroupFlags &amp;= ~FLAG_DISALLOW_INTERCEPT;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Pass it up to our parent</span></span><br><span class="line">        <span class="keyword">if</span> (mParent != <span class="keyword">null</span>) &#123;</span><br><span class="line">            mParent.requestDisallowInterceptTouchEvent(disallowIntercept);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>没错，是他，是他，就是他！我们的女神<del>三上悠亚</del> <strong>requestDisallowInterceptTouchEvent</strong>！<br>通过这段代码我们可以知道，子View可以通过requestDisallowInterceptTouchEvent阻止父view拦截事件，从而也能做到某些场景下需要从父ViewGroup里抢事件过来实现功能，常见的就是容器嵌套（Viewpager+RecyclerView，Viewpager+scrollview等等）的滑动冲突问题解决。</p>
+<p>好了，到了这里就关键了：<br>既然工程中用的Viewpager+RecyclerView的手势处理<strong>基本没有更改</strong>的前提下，为什么会存在滑动冲突解决不当的情况？还会有横屏有bug竖屏稳如狗的状况？<br><img src="https://yunpan.oa.tencent.com/note/api/file/getImage?fileId=5a4b7aa46f0b932c360e8822" alt=""></p>
+<h1 id="关键节点断点调试"><a href="#关键节点断点调试" class="headerlink" title="关键节点断点调试"></a>关键节点断点调试</h1><p>首先看看作为子ViewGroup的RecyclerView为啥没有成功调用requestDisallowInterceptTouchEvent？<br>所以先看看作为父ViewGroup的Viewpager在onInterceptTouchEvent里做了什么：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">boolean</span> onInterceptTouchEvent(MotionEvent ev) &#123;</span><br><span class="line">       </span><br><span class="line"></span><br><span class="line">     ......</span><br><span class="line">       <span class="keyword">switch</span> (action) &#123;</span><br><span class="line">           <span class="keyword">case</span> MotionEvent.ACTION_MOVE: &#123;</span><br><span class="line">               <span class="comment">/*</span></span><br><span class="line"><span class="comment">                * mIsBeingDragged == false, otherwise the shortcut would have caught it. Check</span></span><br><span class="line"><span class="comment">                * whether the user has moved far enough from his original down touch.</span></span><br><span class="line"><span class="comment">                */</span></span><br><span class="line"></span><br><span class="line">               <span class="comment">/*</span></span><br><span class="line"><span class="comment">               * Locally do absolute value. mLastMotionY is set to the y value</span></span><br><span class="line"><span class="comment">               * of the down event.</span></span><br><span class="line"><span class="comment">               */</span></span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">int</span> activePointerId = mActivePointerId;</span><br><span class="line">               <span class="keyword">if</span> (activePointerId == INVALID_POINTER) &#123;</span><br><span class="line">                   <span class="comment">// If we don't have a valid id, the touch down wasn't on content.</span></span><br><span class="line">                   <span class="keyword">break</span>;</span><br><span class="line">               &#125;</span><br><span class="line"></span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">int</span> pointerIndex = ev.findPointerIndex(activePointerId);</span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">float</span> x = ev.getX(pointerIndex);</span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">float</span> dx = x - mLastMotionX;</span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">float</span> xDiff = Math.<span class="keyword">abs</span>(dx);</span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">float</span> y = ev.getY(pointerIndex);</span><br><span class="line">               <span class="keyword">final</span> <span class="keyword">float</span> yDiff = Math.<span class="keyword">abs</span>(y - mInitialMotionY);</span><br><span class="line">               <span class="keyword">if</span> (DEBUG) Log.v(TAG, <span class="string">"Moved x to "</span> + x + <span class="string">","</span> + y + <span class="string">" diff="</span> + xDiff + <span class="string">","</span> + yDiff);</span><br><span class="line"></span><br><span class="line">               <span class="keyword">if</span> (dx != <span class="number">0</span> &amp;&amp; !isGutterDrag(mLastMotionX, dx)</span><br><span class="line">                       &amp;&amp; canScroll(<span class="keyword">this</span>, <span class="keyword">false</span>, (<span class="keyword">int</span>) dx, (<span class="keyword">int</span>) x, (<span class="keyword">int</span>) y)) &#123;</span><br><span class="line">                   <span class="comment">// Nested view has scrollable area under this point. Let it be handled there.</span></span><br><span class="line">                   mLastMotionX = x;</span><br><span class="line">                   mLastMotionY = y;</span><br><span class="line">                   mIsUnableToDrag = <span class="keyword">true</span>;</span><br><span class="line">                   <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">               &#125;</span><br><span class="line">               <span class="keyword">if</span> (xDiff &gt; mTouchSlop &amp;&amp; xDiff * <span class="number">0.5</span>f &gt; yDiff) &#123;</span><br><span class="line">                   <span class="keyword">if</span> (DEBUG) Log.v(TAG, <span class="string">"Starting drag!"</span>);</span><br><span class="line">                   mIsBeingDragged = <span class="keyword">true</span>;</span><br><span class="line">                   requestParentDisallowInterceptTouchEvent(<span class="keyword">true</span>);</span><br><span class="line">                   setScrollState(SCROLL_STATE_DRAGGING);</span><br><span class="line">                   mLastMotionX = dx &gt; <span class="number">0</span></span><br><span class="line">                           ? mInitialMotionX + mTouchSlop : mInitialMotionX - mTouchSlop;</span><br><span class="line">                   mLastMotionY = y;</span><br><span class="line">                   setScrollingCacheEnabled(<span class="keyword">true</span>);</span><br><span class="line">               &#125; <span class="keyword">else</span> <span class="keyword">if</span> (yDiff &gt; mTouchSlop) &#123;</span><br><span class="line">                   <span class="comment">// The finger has moved enough in the vertical</span></span><br><span class="line">                   <span class="comment">// direction to be counted as a drag...  abort</span></span><br><span class="line">                   <span class="comment">// any attempt to drag horizontally, to work correctly</span></span><br><span class="line">                   <span class="comment">// with children that have scrolling containers.</span></span><br><span class="line">                   <span class="keyword">if</span> (DEBUG) Log.v(TAG, <span class="string">"Starting unable to drag!"</span>);</span><br><span class="line">                   mIsUnableToDrag = <span class="keyword">true</span>;</span><br><span class="line">               &#125;</span><br><span class="line">               <span class="keyword">if</span> (mIsBeingDragged) &#123;</span><br><span class="line">                   <span class="comment">// Scroll to follow the motion event</span></span><br><span class="line">                   <span class="keyword">if</span> (performDrag(x)) &#123;</span><br><span class="line">                       ViewCompat.postInvalidateOnAnimation(<span class="keyword">this</span>);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">               <span class="keyword">break</span>;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">        ······</span><br><span class="line">       <span class="keyword">return</span> mIsBeingDragged;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到mIsBeingDragged作为是否要拦截事件的标志，而设置mIsBeingDragged的关键在于<br><figure class="highlight gcode"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> <span class="comment">(xDiff &gt; mTouchSlop &amp;&amp; xDiff * 0.5f &gt; yDiff)</span></span><br></pre></td></tr></table></figure></p>
+<p>这个mTouchSlop是啥呢？就是系统能识别出被认为是滑动的最小距离，小于这个常量，系统不认为你在进行滑动。我们查找它的引用可以看到是由ViewConfigration设定的mPagingTouchSlop：<br><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"><span class="markdown">/**</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">*   </span>Viewpager.java</span></span></span><br><span class="line"><span class="comment"><span class="markdown">**/</span></span></span><br><span class="line">  <span class="keyword">final</span> ViewConfiguration configuration = ViewConfiguration.<span class="keyword">get</span>(context);</span><br><span class="line">  <span class="keyword">final</span> float density = context.getResources().getDisplayMetrics().density;</span><br><span class="line"></span><br><span class="line"><span class="comment">//注意这里取的是configuration里的PagingTouchSlop，也就是下面代码里的mPagingTouchSlop</span></span><br><span class="line">  mTouchSlop = configuration.getScaledPagingTouchSlop();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"><span class="markdown">/**</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">*  </span>ViewConfiguration.java</span></span></span><br><span class="line"><span class="comment"><span class="markdown">**/</span></span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"> mTouchSlop = res.getDimensionPixelSize(</span><br><span class="line">                com.android.internal.R.dimen.config_viewConfigurationTouchSlop);</span><br><span class="line"> mPagingTouchSlop = mTouchSlop * <span class="number">2</span>;</span><br></pre></td></tr></table></figure></p>
+<p>跑到R.dimen.config_viewConfigurationTouchSlop来看看具体是什么值<br><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- Base "touch slop" value used by ViewConfiguration as a</span></span><br><span class="line"><span class="comment">       movement threshold where scrolling should begin. --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">dimen</span> <span class="attr">name</span>=<span class="string">"config_viewConfigurationTouchSlop"</span>&gt;</span>8dp<span class="tag">&lt;/<span class="name">dimen</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>也就是说最小触摸距离为2*8=16dp呗, 在我的工程机（乐视X9000+，464ppi，也就是每平方厘米有190个像素）上就是56px。<br>那是不是这里的问题呢？带着一丝神奇的第六感，打断点看看：<br><img src="https://yunpan.oa.tencent.com/note/api/file/getImage?fileId=5a4b437c6f0b932c360e8462" alt=""></p>
+<p><strong>卧槽，还真是，配合日志可以发现几乎每次滑动，尽管滑动幅度再小，都大于56px，这样的话必然导致Viewpager在onInterceptTouchEvent就拦截下来没有机会给子view接受触摸事件！</strong></p>
+<p><img src="https://yunpan.oa.tencent.com/note/api/file/getImage?fileId=5a4b7b4d6f0b932c360e8823" alt=""></p>
+<h1 id="根据异常信息假设"><a href="#根据异常信息假设" class="headerlink" title="根据异常信息假设"></a>根据异常信息假设</h1><p>也就是说，可以先做个假设，在横屏的滑动情况下由于某种原因，导致最小的滑动的距离都大于16dp，从而导致作为子View的RecyclerView没办法接受事件。<br>验证这种想法当然简单，反射修改最小滑动距离！随便搞个大的值看看</p>
+<figure class="highlight mipsasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">public VerticalViewpager(<span class="built_in">Context</span> <span class="built_in">context</span>) &#123;</span><br><span class="line"></span><br><span class="line">		this(<span class="built_in">context</span>, null)<span class="comment">;</span></span><br><span class="line">		init()<span class="comment">;</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	public VerticalViewpager(<span class="built_in">Context</span> <span class="built_in">context</span>, AttributeSet attrs) &#123;</span><br><span class="line"></span><br><span class="line">		super(<span class="built_in">context</span>, attrs)<span class="comment">;</span></span><br><span class="line"></span><br><span class="line">		init()<span class="comment">;</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	private void init() &#123;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">		try &#123;</span><br><span class="line">			Field slopFiled = Viewpager.class.getDeclaredField(<span class="string">"mTouchSlop"</span>)<span class="comment">;</span></span><br><span class="line">			slopFiled.setAccessible(true)<span class="comment">;</span></span><br><span class="line">			slopFiled<span class="meta">.set</span>(this,<span class="number">200</span>)<span class="comment">;</span></span><br><span class="line">		&#125;catch (Exception e)&#123;</span><br><span class="line">			e.printStackTrace()<span class="comment">;</span></span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<p>编译运行！</p>
+<p>淦！that’s it!<br><img src="https://timgsa.baidu.com/timg?image&amp;quality=80&amp;size=b9999_10000&amp;sec=1514957079331&amp;di=07f19205b5da8ae0b9a294dad20ab197&amp;imgtype=0&amp;src=http%3A%2F%2Fphotocdn.sohu.com%2F20160301%2Fmp61143404_1456776129029_2.gif" alt=""></p>
+<h1 id="根据正确的假设找根因"><a href="#根据正确的假设找根因" class="headerlink" title="根据正确的假设找根因"></a>根据正确的假设找根因</h1><p>好了激动完了，该找找根因了。<br>这时候冷静下来想起之前说的一个小细节：</p>
+<blockquote>
+<p>既然工程中用的Viewpager+RecyclerView的手势处理<strong>基本没有更改</strong>的前提下，为什么会存在滑动冲突解决不当的情况？还会有横屏有bug竖屏稳如狗的状况？</p>
+</blockquote>
+<p>ok,是基本没有更改，但改了哪些呢？</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">public class VerticalViewpager  extends BaseViewpager &#123;</span><br><span class="line"></span><br><span class="line">	private static final String TAG ="VerticalViewpager" ;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	public VerticalViewpager(Context context) &#123;</span><br><span class="line"></span><br><span class="line">		this(context, null);</span><br><span class="line">		<span class="attribute">init();</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	public VerticalViewpager(Context context, AttributeSet attrs) &#123;</span><br><span class="line"></span><br><span class="line">		super(context, attrs);</span><br><span class="line"></span><br><span class="line">		<span class="attribute">init();</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	private void init() &#123;</span><br><span class="line">		// The majority of the magic happens here</span><br><span class="line">		setPageTransformer(true, new VerticalPageTransformer());</span><br><span class="line">		// The easiest way to get rid of the overscroll drawing that happens on the left and right</span><br><span class="line">		<span class="attribute">setOverScrollMode(OVER_SCROLL_NEVER);</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	private class VerticalPageTransformer implements Viewpager.PageTransformer &#123;</span><br><span class="line"></span><br><span class="line">		@Override</span><br><span class="line">		public void transformPage(View view, float position) &#123;</span><br><span class="line"></span><br><span class="line">			if (position &lt; -1) &#123; // [-Infinity,-1)</span><br><span class="line">				// This page is way off-screen to the left.</span><br><span class="line">				<span class="attribute">view.setAlpha(0);</span></span><br><span class="line"><span class="attribute"></span></span><br><span class="line">			&#125; else if (position &lt;= 1) &#123; // [-1,1]</span><br><span class="line">				<span class="attribute">view.setAlpha(1);</span></span><br><span class="line"><span class="attribute"></span></span><br><span class="line">				// Counteract the default slide transition</span><br><span class="line">				view.setTranslationX(view.getWidth() * -position);</span><br><span class="line"></span><br><span class="line">				//set Y position to swipe in from top</span><br><span class="line">				float yPosition = position * view.getHeight();</span><br><span class="line">				<span class="attribute">view.setTranslationY(yPosition);</span></span><br><span class="line"><span class="attribute"></span></span><br><span class="line">			&#125; else &#123; // (1,+Infinity]</span><br><span class="line">				// This page is way off-screen to the right.</span><br><span class="line">				<span class="attribute">view.setAlpha(0);</span></span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/**</span><br><span class="line">	 * Swaps the X and Y coordinates of your touch event.</span><br><span class="line">	 */</span><br><span class="line">	private MotionEvent swapXY(MotionEvent ev) &#123;</span><br><span class="line">		float width = getWidth();</span><br><span class="line">		float height = getHeight();</span><br><span class="line"></span><br><span class="line">		float newX = (ev.getY() / height) * width;</span><br><span class="line">		float newY = (ev.getX() / width) * height;</span><br><span class="line"></span><br><span class="line">		ev.setLocation(newX, newY);</span><br><span class="line"></span><br><span class="line">		return ev;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	public boolean onInterceptTouchEvent(MotionEvent ev)&#123;</span><br><span class="line">		boolean intercepted = super.onInterceptTouchEvent(swapXY(ev));</span><br><span class="line">		swapXY(ev); // return touch coordinates to original reference frame for any child views</span><br><span class="line">		return intercepted;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	public boolean onTouchEvent(MotionEvent ev) &#123;</span><br><span class="line">		return super.onTouchEvent(swapXY(ev));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>首先我把目光就落在了swapXY这个方法身上，如果不出bug的话一般也看不出啥毛病的，但第二次看来突然发觉哪有什么不对：</p>
+<figure class="highlight maxima"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * Swaps the X and Y coordinates of your touch event.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	private MotionEvent swapXY(MotionEvent <span class="built_in">ev</span>) &#123;</span><br><span class="line">		<span class="built_in">float</span> <span class="built_in">width</span> = getWidth();</span><br><span class="line">		<span class="built_in">float</span> <span class="built_in">height</span> = getHeight();</span><br><span class="line"></span><br><span class="line">		<span class="built_in">float</span> newX = (<span class="built_in">ev</span>.getY() / <span class="built_in">height</span>) * <span class="built_in">width</span>;</span><br><span class="line">		<span class="built_in">float</span> newY = (<span class="built_in">ev</span>.getX() / <span class="built_in">width</span>) * <span class="built_in">height</span>;</span><br><span class="line"></span><br><span class="line">		<span class="built_in">ev</span>.setLocation(newX, newY);</span><br><span class="line"></span><br><span class="line">		<span class="built_in">return</span> <span class="built_in">ev</span>;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<p>先简化成数学方式比较好描述：</p>
+<p>$$记 初始坐标为(X_0,Y_0), 通过swap计算得到的坐标为(X_0^<code>,Y_0^</code>),\frac{width}{height}为r,用户触摸屏幕到另一个位置后的坐标为(X_1,Y_1),通过swap方法计算得到的坐标为$$<br>由此：<br>$$swap(X_0,Y_0) = (X_0^<code>,Y_0^</code>) = (Y_0<em>r,\frac{X_0}{r})$$<br>这时注意，VerticalViewpager在onInterceptTouchEvent和onTouchEvent都是调用的super方法，也就是说我们需要关注的是:<br>$$\nabla{X}=X_1^<code>-X_0^</code>=(Y_1-Y_0)</em>r$$<br>这样看就很清晰了，<strong>屏幕的长宽比会影响到差值，从而放大或者缩小差值造成误差</strong>！<br>具体到我们的用的乐视手机上，r=0.5625(竖屏，横屏为1.78）,最小滑动距离56px在竖屏下成了31.5px，横屏下成了99.68px（我神一般的金手指居然还能滑出60px也是厉害了），这就能解释为什么为啥竖屏下弹幕区域的滑动如丝流畅但横屏下已经成为bug了！</p>
+<h1 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h1><p>OK，写到这已经把这个bug的祖坟都挖出来了，解决方案也可以出来了</p>
+<ol>
+<li>简单粗暴的在播放场景下用反射改变mTouchSlop</li>
+<li>重写一遍VerticalViewpager，不要涉及到坐标的转换</li>
+</ol>
+<p>显然第一个方案十分粗暴，但第二个方案也是让人倒吸一口凉气，网上虽说也有不少代码，但经历过这一遭后，就算要用也得从头到尾过一遍了，搞不好又会写成另一个文章的历程。但是嘛，这才是保障代码质量的重要步骤，不能成天只当救火员啊！(๑•̀ㅂ•́)و✧</p>
+<p>你们可能知道很久的小tips：<br>1.文中用到的数学公式是由MathJax提供，使用方便简洁，markdown里直接用清爽无比<br>2.云盘笔记里写的md笔记以及上传的图片，km上均可显示</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <div class="share">
+	<div class="bshare-custom">
+	<div class="bsPromo bsPromo2"></div>
+	<a title="分享到" href="http://www.bShare.cn/" id="bshare-shareto" class="bshare-more">分享到</a>
+	<a title="分享到微信" class="bshare-weixin" href="javascript:void(0);"></a>
+	<a title="分享到豆瓣" class="bshare-douban" href="javascript:void(0);"></a>
+	<a title="分享到QQ好友" class="bshare-qqim" href="javascript:void(0);"></a>
+	<a title="分享到新浪微博" class="bshare-sinaminiblog" href="javascript:void(0);"></a><a title="更多平台" class="bshare-more bshare-more-icon more-style-addthis"></a>
+	<span class="BSHARE_COUNT bshare-share-count" style="float: none;">43K</span>
+	</div>
+	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#style=-1&amp;uuid=&amp;pophcol=2&amp;lang=zh"></script>
+	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/bshareC0.js"></script>
+</div>
+      <script type="text/javascript" charset="utf-8">
+        bShare.addEntry({
+        title: "http://Jhuan.coding.me/JHuan/2018/01/03/cjgc9hck300006csob4ju9oft/",
+        url: "http://Jhuan.coding.me/JHuan/2018/01/03/cjgc9hck300006csob4ju9oft/"
+        });
+      </script>
+      <br>
+      <br>
+      <br>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Android/">Android</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="hexo-真相" class="article article-type-hexo" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/11/28/cjgc99x45000arhso481vz0pb/" class="article-date">
+  <time datetime="2017-11-28T09:51:22.000Z" itemprop="datePublished">2017-11-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/11/28/cjgc99x45000arhso481vz0pb/">真相</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>每年总结这个习惯还是很难改的哈，每到年底总喜欢算算流水账，感慨下人生无常感恩下生命中遇到的人balala…倒也不是腻烦了输出鸡汤和讨厌矫情，但是今年所经历的事情流水账和矫情是无法描述了。已然接近而立之年，矫情和鸡汤只是逃避现实的手段了，知行合一、活在当下才是主旋律。但在此之前，还是很有必要定性下最近几年奠基的认知基础，对我来说才是第一步。虽说思考人生这种东西没有止境，但所谓的四十不惑在我看来只是懒得想了而已，但不能成为拖延的借口，该阐释该记录的，写下来再说。</p>
 <p>首先还是想谈谈可以囊括整篇总结的精髓的大作：《黑客帝国》三部曲。</p>
 <p>这部已经有十几年历史的电影就算是现在看来也是无比震撼的，其涵盖的哲学思维，人工智能设想，科幻场景渲染已经成为科幻电影的经典。我阅片确实很少，虽不能称其前无古人后无来者，但对于当时还是青春年少的我来说带来的震慑和影响是超过了那些经典的励志电影。其中最经典的一句话现在仍是思考问题时的黄金法则：</p>
 <blockquote>
@@ -112,8 +245,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2017/11/28/cjatc0vx80006pkso7ahyvpam/",
-        url: "http://Jhuan.coding.me/JHuan/2017/11/28/cjatc0vx80006pkso7ahyvpam/"
+        title: "http://Jhuan.coding.me/JHuan/2017/11/28/cjgc99x45000arhso481vz0pb/",
+        url: "http://Jhuan.coding.me/JHuan/2017/11/28/cjgc99x45000arhso481vz0pb/"
         });
       </script>
       <br>
@@ -121,6 +254,98 @@
       <br>
       
       
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Android/">Android</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="hexo-你用的那个Sort还是当初你认识的那个sort么？" class="article article-type-hexo" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/08/03/cjgc9so7u0000c2souf4ork0o/" class="article-date">
+  <time datetime="2017-08-03T12:51:12.000Z" itemprop="datePublished">2017-08-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/08/03/cjgc9so7u0000c2souf4ork0o/">你用的那个Sort还是当初你认识的那个sort么？</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>正值明日之子大直播火热之际，好不容易在一个周六可以在吃着法国蜗牛的我生平第一次收到了rdm的crash告警，每隔5分钟就发到微信上的那种，那种看到我小心肝不止的在颤抖的那种告警。<br>赶紧看看是什么crash突然在如此重要的直播里crash了，一眼看去居然是个从未见过的crash。还好堆栈明了可以马上知道是道具弹幕中排序 的锅，但这是个什么鬼？</p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">java<span class="selector-class">.lang</span><span class="selector-class">.IllegalArgumentException</span>: Comparison method violates its general contract!</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.ComparableTimSort</span><span class="selector-class">.mergeHi</span>(ComparableTimSort<span class="selector-class">.java</span>:<span class="number">848</span>)</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.ComparableTimSort</span><span class="selector-class">.mergeAt</span>(ComparableTimSort<span class="selector-class">.java</span>:<span class="number">466</span>)</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.ComparableTimSort</span><span class="selector-class">.mergeCollapse</span>(ComparableTimSort<span class="selector-class">.java</span>:<span class="number">389</span>)</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.ComparableTimSort</span><span class="selector-class">.sort</span>(ComparableTimSort<span class="selector-class">.java</span>:<span class="number">178</span>)</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.ComparableTimSort</span><span class="selector-class">.sort</span>(ComparableTimSort<span class="selector-class">.java</span>:<span class="number">142</span>)</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.Arrays</span><span class="selector-class">.sort</span>(Arrays<span class="selector-class">.java</span>:<span class="number">1957</span>)</span><br><span class="line">java<span class="selector-class">.util</span><span class="selector-class">.Collections</span><span class="selector-class">.sort</span>(Collections<span class="selector-class">.java</span>:<span class="number">1877</span>)</span><br><span class="line">com<span class="selector-class">.tencent</span><span class="selector-class">.qqlivebroadcast</span><span class="selector-class">.business</span><span class="selector-class">.bulletscreen</span><span class="selector-class">.presenter</span><span class="selector-class">.GiftDanmakuPresenter</span><span class="selector-class">.void</span> onGetPushDanmaku(java<span class="selector-class">.util</span><span class="selector-class">.List</span>)(GiftDanmakuPresenter<span class="selector-class">.java</span>:<span class="number">150</span>)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>赶紧问谷歌爸爸，初步结论是：<strong>由于jdk7和Android采用的是排序方法是TimSort，它对于元素之间等价关系的校验更为严格，如果违反了等价关系则有可能出发崩溃。</strong><br>看完居然是依旧懵逼的。</p>
+<p>OK，咱们一个个来，复习基础知识，探究下为什么会有这样的问题呢？里面到底隐藏了什么大<del>咪咪</del>秘密？</p>
+<h2 id="等价关系你还记得么？"><a href="#等价关系你还记得么？" class="headerlink" title="等价关系你还记得么？"></a>等价关系你还记得么？</h2><p>设R是集合A上的一个二元关系，若R满足：</p>
+<ul>
+<li><strong>自反性</strong>：∀a∈A,=&gt;(a,a)∈R</li>
+<li><strong>对称性</strong>：(a,b)∈R∧a≠b=&gt;(b,a)∈R</li>
+<li><strong>传递性</strong>：(a,b)∈R,(b,c)∈R=&gt;(a,c)∈R<br>则称R是定义在A上的一个等价关系。effective java中第三章。有对应的关于对象关于compareTo的建议规范讲到这个这三个属性</li>
+</ul>
+<h2 id="TimSort是个什么鬼？那个叫Tim的同学你放学后别走"><a href="#TimSort是个什么鬼？那个叫Tim的同学你放学后别走" class="headerlink" title="TimSort是个什么鬼？那个叫Tim的同学你放学后别走"></a>TimSort是个什么鬼？那个叫Tim的同学你放学后别走</h2><p>先来弄明白TimSort是什么排序先，由于摘自维基百科：</p>
+<blockquote>
+<p>Timsort是结合了合并排序（merge sort）和插入排序（insertion sort）而得出的排序算法，它在现实中有很好的效率。Tim Peters在2002年设计了该算法并在Python中使用（TimSort 是 python 中 list.sort 的默认实现）。该算法找到数据中已经排好序的块-分区，每一个分区叫一个run，然后按规则合并这些run。Pyhton自从2.3版以来一直采用Timsort算法排序，现在Java SE7和Android也采用Timsort算法对数组排序。</p>
+</blockquote>
+<p>核心思路过程：</p>
+<blockquote>
+<p>TimSort 算法为了减少对升序部分的回溯和对降序部分的性能倒退，将输入按其升序和降序特点进行了分区。排序的输入的单位不是一个个单独的数字，而是一个个的块-分区。其中每一个分区叫一个run。针对这些 run 序列，每次拿一个 run 出来按规则进行合并。每次合并会将两个 run合并成一个 run。合并的结果保存到栈中。合并直到消耗掉所有的 run，这时将栈上剩余的 run合并到只剩一个 run 为止。这时这个仅剩的 run 便是排好序的结果。<br>综上述过程，Timsort算法的过程包括<br>（0）如何数组长度小于某个值，直接用二分插入排序算法<br>（1）找到各个run，并入栈<br>（2）按规则合并run</p>
+</blockquote>
+<p>具体的算法实现过程感兴趣的同学可以直接阅读源码，也有相关的博客解读和分析这个挺复杂且其实有bug的算法。这里不做过多阐述因为实在是…有够繁琐的。<br>这里直接讲会触发这crash的校验代码:<br><figure class="highlight nix"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="attr">len2</span> == <span class="number">1</span>) &#123;</span><br><span class="line">     <span class="keyword">if</span> (DEBUG) <span class="keyword">assert</span> len1 &gt; <span class="number">0</span>;</span><br><span class="line">     dest <span class="attr">-=</span> len1;</span><br><span class="line">     cursor1 <span class="attr">-=</span> len1;</span><br><span class="line">     System.arraycopy(a, cursor1 + <span class="number">1</span>, a, dest + <span class="number">1</span>, len1);</span><br><span class="line">     a[dest] = tmp[cursor2];  // Move first elt of run2 to front of merge</span><br><span class="line"> &#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="attr">len2</span> == <span class="number">0</span>) &#123;</span><br><span class="line">     <span class="built_in">throw</span> new IllegalArgumentException(</span><br><span class="line">         <span class="string">"Comparison method violates its general contract!"</span>);</span><br><span class="line"> &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">     <span class="keyword">if</span> (DEBUG) <span class="keyword">assert</span> <span class="attr">len1</span> == <span class="number">0</span>;</span><br><span class="line">     <span class="keyword">if</span> (DEBUG) <span class="keyword">assert</span> len2 &gt; <span class="number">0</span>;</span><br><span class="line">     System.arraycopy(tmp, <span class="number">0</span>, a, dest - (len2 - <span class="number">1</span>), len2);</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure></p>
+<p>此举是在两个run归并之前做个的一个优化，假设已有两个有序的runA和runB，归并开始前会把其中一个run中需要合并的数据拷贝到tmp数组中（这里假设将runB中的部分数据拷入）。每次归并比较时会记录其中一个run和tmp段比较“胜利（大于对方）”的次数，为了得知runA是否平均大于runB，如果达到最大次数，会有一次tmp数据数据直接拷贝到runA中的操作，拷贝完并做一次上述代码的校验维护算法的正确性。</p>
+<h2 id="为啥传统的归并排序没有这种问题？"><a href="#为啥传统的归并排序没有这种问题？" class="headerlink" title="为啥传统的归并排序没有这种问题？"></a>为啥传统的归并排序没有这种问题？</h2><p>最简单最单纯的归并排序过程：<br>    1、Divide: 把长度为n的输入序列分成两个长度为n/2的子序列。<br>    2、Conquer: 对这两个子序列分别采用归并排序。<br>    3、Combine: 将两个排序好的子序列合并成一个最终的排序序列。</p>
+<p>盗个图说明下归并过程：<br><img src="http://km.oa.com/files/photos/pictures/201708/1501667820_89_w554_h542.jpeg" alt="归并排序过程"></p>
+<p>可以看到，归并排序并不校验元素的等价关系，只是仅仅判断两个元素之间的大小就可以完成归并。</p>
+<h2 id="直接原因？"><a href="#直接原因？" class="headerlink" title="直接原因？"></a>直接原因？</h2><h3 id="业务场景"><a href="#业务场景" class="headerlink" title="业务场景"></a>业务场景</h3><p>腾讯直播对于道具弹幕会有个排序需求（大土豪送的跑车游艇当然要优先展示啊~），目前来说需求就很简单，送的道具价值越大越靠前，由后台下的一个字段giftPriority来做排序关键字，让前端可以将获得的弹幕队列进行排序。</p>
+<h3 id="排序实现过程"><a href="#排序实现过程" class="headerlink" title="排序实现过程"></a>排序实现过程</h3><p>由于历史原因，目前有两个通道下发道具弹幕信息，分别为push通道和轮询通道（简称poll通道)，分别实现为PushGiftDanmakuContent和GiftDanmakUContent,继承于BaseDanmakuContent。</p>
+<p>于是要做排序，那就需要用支持弹幕的compare啦，直接上代码：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 普通弹幕内容类</span></span><br><span class="line"><span class="comment"> * Created by barryjiang on 2016/7/8.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">public <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">BaseDanmakuContent</span> <span class="title">implements</span> <span class="title">Comparable&lt;BaseDanmakuContent&gt;</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//弹幕类型</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">DanmakuContentType</span>    mCommentType;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//昵称</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">String</span> mSenderNickName = <span class="string">""</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//内容</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">String</span> mContent = <span class="string">""</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//存入的时间</span></span><br><span class="line">    <span class="keyword">protected</span> long currentTime;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    public int compareTo(<span class="meta">@NonNull</span> <span class="type">BaseDanmakuContent</span> another) &#123;</span><br><span class="line">        <span class="comment">//按时间排序，先存入的排在前面，FIFO</span></span><br><span class="line">        <span class="keyword">return</span> (int) (((<span class="type">BaseDanmakuContent</span>) another).currentTime - currentTime );</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * poll弹幕道具弹幕内容</span></span><br><span class="line"><span class="comment"> * Created by barryjiang on 2016/7/8.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">public <span class="class"><span class="keyword">class</span> <span class="title">GiftDanmakuContent</span> <span class="keyword">extends</span> <span class="title">BaseDanmakuContent</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="type">GiftInfo</span> giftInfo;</span><br><span class="line"></span><br><span class="line">    public <span class="type">GiftInfo</span> getGiftInfo() &#123;</span><br><span class="line">        <span class="keyword">return</span> giftInfo;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void setGiftInfo(<span class="type">GiftInfo</span> giftInfo) &#123;</span><br><span class="line">        <span class="keyword">this</span>.giftInfo = giftInfo;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 通过push通道下发的弹幕内容</span></span><br><span class="line"><span class="comment"> * Created by barryjiang on 2017/4/13.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line">public <span class="class"><span class="keyword">class</span> <span class="title">PushGiftDanmakuContent</span> <span class="keyword">extends</span> <span class="title">BaseDanmakuContent</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//优先级，越高优先级越高，用于弹幕排序</span></span><br><span class="line">    <span class="keyword">private</span> int                     giftPriority = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    public int compareTo(<span class="meta">@NonNull</span> <span class="type">BaseDanmakuContent</span> another) &#123;</span><br><span class="line">        <span class="keyword">if</span>(another instanceof <span class="type">PushGiftDanmakuContent</span>)&#123;</span><br><span class="line">            <span class="type">PushGiftDanmakuContent</span> pushGiftDanmakuContent = (<span class="type">PushGiftDanmakuContent</span>) another;</span><br><span class="line"></span><br><span class="line">            <span class="comment">//先按priority排，最后按存入的时间排</span></span><br><span class="line">            <span class="keyword">if</span>(priority - pushGiftDanmakuContent.getGiftPriority() !=<span class="number">0</span> )&#123;</span><br><span class="line">                <span class="keyword">return</span> priority - pushGiftDanmakuContent.getGiftPriority();</span><br><span class="line">            &#125;<span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">super</span>.compareTo(another);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;<span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">super</span>.compareTo(another);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>相信聪明的读者已经看出了问题了，这样的实现违反了等价关系中的传递性。可以容易证明存在pushDanmakuA&gt;pushDanmakuB,pushDanmakuB&gt;PollDanmakuC,PollDanmakuC&gt;pushDanmakuA这样的异常。</p>
+<p>而且测试没能复现也正是因为要触发TimSort的归并排序之前，如果元素数目没有达到最小归并数，则采用二分插入排序，一样不会校验等价关系。</p>
+<h2 id="后话"><a href="#后话" class="headerlink" title="后话"></a>后话</h2><p>排序已经是非常古典的一个算法问题了，也没有想到后续的优化和创新有这么一个坑，但是说到底还是平时编程时的思维习惯不够好造成的。愿各位引以为戒。<br>水平有限，关于算法实现细节的解析可能有偏差也望各位指正。</p>
+<h1 id="相关阅读："><a href="#相关阅读：" class="headerlink" title="相关阅读："></a>相关阅读：</h1><p><a href="http://blog.csdn.net/on_1y/article/details/30109975" target="_blank" rel="noopener">OpenJDK 源代码阅读之 TimSort</a><br><a href="http://www.freebuf.com/vuls/62129.html" target="_blank" rel="noopener">如何找出Timsort算法和玉兔月球车中的Bug？</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <div class="share">
+	<div class="bshare-custom">
+	<div class="bsPromo bsPromo2"></div>
+	<a title="分享到" href="http://www.bShare.cn/" id="bshare-shareto" class="bshare-more">分享到</a>
+	<a title="分享到微信" class="bshare-weixin" href="javascript:void(0);"></a>
+	<a title="分享到豆瓣" class="bshare-douban" href="javascript:void(0);"></a>
+	<a title="分享到QQ好友" class="bshare-qqim" href="javascript:void(0);"></a>
+	<a title="分享到新浪微博" class="bshare-sinaminiblog" href="javascript:void(0);"></a><a title="更多平台" class="bshare-more bshare-more-icon more-style-addthis"></a>
+	<span class="BSHARE_COUNT bshare-share-count" style="float: none;">43K</span>
+	</div>
+	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#style=-1&amp;uuid=&amp;pophcol=2&amp;lang=zh"></script>
+	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/bshareC0.js"></script>
+</div>
+      <script type="text/javascript" charset="utf-8">
+        bShare.addEntry({
+        title: "http://Jhuan.coding.me/JHuan/2017/08/03/cjgc9so7u0000c2souf4ork0o/",
+        url: "http://Jhuan.coding.me/JHuan/2017/08/03/cjgc9so7u0000c2souf4ork0o/"
+        });
+      </script>
+      <br>
+      <br>
+      <br>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Android/">Android</a></li></ul>
+
     </footer>
   </div>
   
@@ -130,7 +355,7 @@
   
     <article id="hexo-谈谈那个大圣的背影" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/05/24/cjatc0vxd000dpksot5gocg5m/" class="article-date">
+    <a href="/2016/05/24/cjgc99x46000drhso77o6dw2d/" class="article-date">
   <time datetime="2016-05-24T12:35:45.000Z" itemprop="datePublished">2016-05-24</time>
 </a>
     
@@ -142,7 +367,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2016/05/24/cjatc0vxd000dpksot5gocg5m/">谈谈那个大圣的背影</a>
+      <a class="article-title" href="/2016/05/24/cjgc99x46000drhso77o6dw2d/">谈谈那个大圣的背影</a>
     </h1>
   
 
@@ -192,8 +417,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2016/05/24/cjatc0vxd000dpksot5gocg5m/",
-        url: "http://Jhuan.coding.me/JHuan/2016/05/24/cjatc0vxd000dpksot5gocg5m/"
+        title: "http://Jhuan.coding.me/JHuan/2016/05/24/cjgc99x46000drhso77o6dw2d/",
+        url: "http://Jhuan.coding.me/JHuan/2016/05/24/cjgc99x46000drhso77o6dw2d/"
         });
       </script>
       <br>
@@ -212,7 +437,7 @@
   
     <article id="hexo-晦涩的成人寓言——斯坦利的寓言" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/02/04/cjatc0vxa0009pksox65vlt6f/" class="article-date">
+    <a href="/2016/02/04/cjgc99x410006rhso6fs8sb4l/" class="article-date">
   <time datetime="2016-02-04T09:51:22.000Z" itemprop="datePublished">2016-02-04</time>
 </a>
     
@@ -224,7 +449,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2016/02/04/cjatc0vxa0009pksox65vlt6f/">晦涩的成人寓言——斯坦利的寓言</a>
+      <a class="article-title" href="/2016/02/04/cjgc99x410006rhso6fs8sb4l/">晦涩的成人寓言——斯坦利的寓言</a>
     </h1>
   
 
@@ -267,8 +492,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2016/02/04/cjatc0vxa0009pksox65vlt6f/",
-        url: "http://Jhuan.coding.me/JHuan/2016/02/04/cjatc0vxa0009pksox65vlt6f/"
+        title: "http://Jhuan.coding.me/JHuan/2016/02/04/cjgc99x410006rhso6fs8sb4l/",
+        url: "http://Jhuan.coding.me/JHuan/2016/02/04/cjgc99x410006rhso6fs8sb4l/"
         });
       </script>
       <br>
@@ -287,7 +512,7 @@
   
     <article id="hexo-高效展示你的Bitmap（上）" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/02/03/cjatc0vxb000apksotgrg73ga/" class="article-date">
+    <a href="/2016/02/03/cjgc99x430009rhsov0yzstyf/" class="article-date">
   <time datetime="2016-02-03T08:02:33.000Z" itemprop="datePublished">2016-02-03</time>
 </a>
     
@@ -299,7 +524,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2016/02/03/cjatc0vxb000apksotgrg73ga/">【Android training】高效展示你的Bitmap（上）</a>
+      <a class="article-title" href="/2016/02/03/cjgc99x430009rhsov0yzstyf/">【Android training】高效展示你的Bitmap（上）</a>
     </h1>
   
 
@@ -355,8 +580,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2016/02/03/cjatc0vxb000apksotgrg73ga/",
-        url: "http://Jhuan.coding.me/JHuan/2016/02/03/cjatc0vxb000apksotgrg73ga/"
+        title: "http://Jhuan.coding.me/JHuan/2016/02/03/cjgc99x430009rhsov0yzstyf/",
+        url: "http://Jhuan.coding.me/JHuan/2016/02/03/cjgc99x430009rhsov0yzstyf/"
         });
       </script>
       <br>
@@ -375,7 +600,7 @@
   
     <article id="hexo-序" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2015/12/24/cjatc0vx70005pksoa0u03exh/" class="article-date">
+    <a href="/2015/12/24/cjgc99x400005rhsonzcisujf/" class="article-date">
   <time datetime="2015-12-24T11:53:22.000Z" itemprop="datePublished">2015-12-24</time>
 </a>
     
@@ -387,7 +612,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2015/12/24/cjatc0vx70005pksoa0u03exh/">序</a>
+      <a class="article-title" href="/2015/12/24/cjgc99x400005rhsonzcisujf/">序</a>
     </h1>
   
 
@@ -415,8 +640,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2015/12/24/cjatc0vx70005pksoa0u03exh/",
-        url: "http://Jhuan.coding.me/JHuan/2015/12/24/cjatc0vx70005pksoa0u03exh/"
+        title: "http://Jhuan.coding.me/JHuan/2015/12/24/cjgc99x400005rhsonzcisujf/",
+        url: "http://Jhuan.coding.me/JHuan/2015/12/24/cjgc99x400005rhsonzcisujf/"
         });
       </script>
       <br>
@@ -435,7 +660,7 @@
   
     <article id="hexo-【Android training】允许其他应用拉起你的应用" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2015/11/05/cjatc0vwz0002pksodtwwcpkq/" class="article-date">
+    <a href="/2015/11/05/cjgc99x3s0002rhsoz44vehea/" class="article-date">
   <time datetime="2015-11-05T12:30:22.000Z" itemprop="datePublished">2015-11-05</time>
 </a>
     
@@ -447,7 +672,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2015/11/05/cjatc0vwz0002pksodtwwcpkq/">【Android training】引导到另一个APP</a>
+      <a class="article-title" href="/2015/11/05/cjgc99x3s0002rhsoz44vehea/">【Android training】引导到另一个APP</a>
     </h1>
   
 
@@ -491,85 +716,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2015/11/05/cjatc0vwz0002pksodtwwcpkq/",
-        url: "http://Jhuan.coding.me/JHuan/2015/11/05/cjatc0vwz0002pksodtwwcpkq/"
-        });
-      </script>
-      <br>
-      <br>
-      <br>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Android-training-翻译/">Android training 翻译</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="hexo-【Android training】引导到另一个APP" class="article article-type-hexo" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2015/10/30/cjatc0vww0001pksojcfw8b7i/" class="article-date">
-  <time datetime="2015-10-30T12:12:22.000Z" itemprop="datePublished">2015-10-30</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2015/10/30/cjatc0vww0001pksojcfw8b7i/">【Android training】引导到另一个APP</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Android最重要的一个特性就是可以通过action引导到其他APP里去了。比如说你想在你的APP中将一些地址显示在地图上，你无需专门搞个activity显示地图，你可以用带有地址信息的Intent发起请求，Android系统就会拉起一个APP去做到这点。</p>
-<h2 id="用隐式Intent"><a href="#用隐式Intent" class="headerlink" title="用隐式Intent"></a>用隐式Intent</h2><p>隐式Intent无需你指定具体的Class，把指定的action(比如view, edit, send, or get)，再把数据带上就欧啦。</p>
-<p>以下是一些例子：<br><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//打电话</span></span><br><span class="line"><span class="built_in">Uri</span> number = <span class="built_in">Uri</span>.parse(<span class="string">"tel:5551234"</span>);</span><br><span class="line">Intent callIntent = <span class="keyword">new</span> Intent(Intent.ACTION_DIAL, number);</span><br><span class="line"><span class="comment">//用地图</span></span><br><span class="line"><span class="built_in">Uri</span> location = <span class="built_in">Uri</span>.parse(<span class="string">"geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California"</span>);</span><br><span class="line"><span class="built_in">Uri</span> location = <span class="built_in">Uri</span>.parse(<span class="string">"geo:37.422219,-122.08364?z=14"</span>); </span><br><span class="line">Intent mapIntent = <span class="keyword">new</span> Intent(Intent.ACTION_VIEW, location);</span><br><span class="line"><span class="comment">//浏览网页</span></span><br><span class="line"><span class="built_in">Uri</span> webpage = <span class="built_in">Uri</span>.parse(<span class="string">"http://www.android.com"</span>);</span><br><span class="line">Intent webIntent = <span class="keyword">new</span> Intent(Intent.ACTION_VIEW, webpage);</span><br></pre></td></tr></table></figure></p>
-<h2 id="看看有没应用可以接受俺们的Intent"><a href="#看看有没应用可以接受俺们的Intent" class="headerlink" title="看看有没应用可以接受俺们的Intent"></a>看看有没应用可以接受俺们的Intent</h2><p>尽管Android系统保证肯定有个内置应用（比如电话，电邮，日历等）会接受俺们的Intent,但你始终应该在使用这个Intent之前要确认下。</p>
-<blockquote>
-<p>注意：如果你作死使用了一个根本没有应用能接受的Intent，你的APP会Crash的！(ノಠ益ಠ)ノ彡┻━┻</p>
-</blockquote>
-<p>调用queryIntentActivities()就可以获得能接受你的Intent的应用列表，如果返回的不是空列表你就能安心使用这个Intent啦，(^o^)/YES!<br><figure class="highlight ebnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">PackageManager packageManager</span> = getPackageManager();</span><br><span class="line"><span class="attribute">List activities</span> = packageManager.queryIntentActivities(intent,</span><br><span class="line">        PackageManager.MATCH_DEFAULT_ONLY);</span><br><span class="line"><span class="attribute">boolean isIntentSafe</span> = activities.size() &gt; 0;</span><br></pre></td></tr></table></figure></p>
-<p>如果isIntent是true，那就至少有一个应用能接受你的Intent啦</p>
-<p>##用你的Intent拉起一个Activity</p>
-<p>当你创建好Intent塞进了数据之后，便可以调用startActivity了。如果系统识别到有多个APP可以处理你的Intent,系统会展示一个对话框供用户选择哪个APP打开，如果只有一个APP能处理你的Intent，那就会立刻被打开。</p>
-<p><img src="http://developer.android.com/images/training/basics/intents-choice.png" alt="pic 1" title="pic1:供你选择拉起的APP对话框长这样~"></p>
-<p>以下是个完整的例子，演示如何创建一个可以拉起地图应用的intent，然后退出应用拉起地图：</p>
-<figure class="highlight pony"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Build the intent</span></span><br><span class="line"><span class="type">Uri</span> location = <span class="type">Uri</span>.parse(<span class="string">"geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California"</span>);</span><br><span class="line"><span class="type">Intent</span> mapIntent = <span class="function"><span class="keyword">new</span> <span class="title">Intent</span>(<span class="type">Intent</span>.<span class="type">ACTION_VIEW</span>, location);</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">// Verify it resolves</span></span></span><br><span class="line"><span class="function"><span class="title">PackageManager</span> <span class="title">packageManager</span> = <span class="title">getPackageManager</span>();</span></span><br><span class="line"><span class="function"><span class="title">List</span>&lt;<span class="title">ResolveInfo</span>&gt; <span class="title">activities</span> = <span class="title">packageManager</span>.<span class="title">queryIntentActivities</span>(mapIntent, <span class="number">0</span>);</span></span><br><span class="line"><span class="function"><span class="title">boolean</span> <span class="title">isIntentSafe</span> = <span class="title">activities</span>.<span class="title">size</span>() &gt; 0;</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">// Start an activity if it's safe</span></span></span><br><span class="line"><span class="function"><span class="title">if</span> (isIntentSafe) &#123;</span></span><br><span class="line"><span class="function">    <span class="title">startActivity</span>(mapIntent);</span></span><br><span class="line"><span class="function">&#125;</span></span><br></pre></td></tr></table></figure>
-<p><img src="http://developer.android.com/images/training/basics/intent-chooser.png" alt="pic 2"></p>
-<h2 id="显示一个应用选择对话框"><a href="#显示一个应用选择对话框" class="headerlink" title="显示一个应用选择对话框"></a>显示一个应用选择对话框</h2><p>可以注意得到当你使用startActivity（）将你的Intent传递到另一个app并且不止一个app可以接收你的Intent时，用户可以通过一个应用选择对话框来决定使用哪个应用，并且能够选择哪个应用作为默认打开方式。如果场景是浏览网页或者拍照那还是个不错的选择。</p>
-<p>但是，有些场景可能用户更需要每次都使用不同的app作为打开方式，比如说“分享”。这时你应该强制显示应用选择对话框让用户每次打开时选择使用哪个APP。</p>
-<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Intent intent = <span class="keyword">new</span> Intent(Intent.ACTION_SEND);</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="comment">// Always use string resources for UI text.</span></span><br><span class="line"><span class="comment">// This says something like "Share this photo with"</span></span><br><span class="line"><span class="keyword">String</span> <span class="built_in">title</span> = getResources().getString(R.<span class="keyword">string</span>.chooser_title);</span><br><span class="line"><span class="comment">// Create intent to show chooser</span></span><br><span class="line">Intent chooser = Intent.createChooser(intent, <span class="built_in">title</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Verify the intent will resolve to at least one activity</span></span><br><span class="line"><span class="keyword">if</span> (intent.resolveActivity(getPackageManager()) != <span class="built_in">null</span>) &#123;</span><br><span class="line">    startActivity(chooser);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-    <footer class="article-footer">
-      <div class="share">
-	<div class="bshare-custom">
-	<div class="bsPromo bsPromo2"></div>
-	<a title="分享到" href="http://www.bShare.cn/" id="bshare-shareto" class="bshare-more">分享到</a>
-	<a title="分享到微信" class="bshare-weixin" href="javascript:void(0);"></a>
-	<a title="分享到豆瓣" class="bshare-douban" href="javascript:void(0);"></a>
-	<a title="分享到QQ好友" class="bshare-qqim" href="javascript:void(0);"></a>
-	<a title="分享到新浪微博" class="bshare-sinaminiblog" href="javascript:void(0);"></a><a title="更多平台" class="bshare-more bshare-more-icon more-style-addthis"></a>
-	<span class="BSHARE_COUNT bshare-share-count" style="float: none;">43K</span>
-	</div>
-	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#style=-1&amp;uuid=&amp;pophcol=2&amp;lang=zh"></script>
-	<script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/bshareC0.js"></script>
-</div>
-      <script type="text/javascript" charset="utf-8">
-        bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2015/10/30/cjatc0vww0001pksojcfw8b7i/",
-        url: "http://Jhuan.coding.me/JHuan/2015/10/30/cjatc0vww0001pksojcfw8b7i/"
+        title: "http://Jhuan.coding.me/JHuan/2015/11/05/cjgc99x3s0002rhsoz44vehea/",
+        url: "http://Jhuan.coding.me/JHuan/2015/11/05/cjgc99x3s0002rhsoz44vehea/"
         });
       </script>
       <br>
@@ -588,7 +736,7 @@
   
     <article id="hexo-【Android training】文件共享" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2015/10/30/cjatc0vx50004pksom0uzxbu1/" class="article-date">
+    <a href="/2015/10/30/cjgc99x3o0001rhsow2y6mztv/" class="article-date">
   <time datetime="2015-10-30T12:12:22.000Z" itemprop="datePublished">2015-10-30</time>
 </a>
     
@@ -600,7 +748,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2015/10/30/cjatc0vx50004pksom0uzxbu1/">【Android training】文件共享</a>
+      <a class="article-title" href="/2015/10/30/cjgc99x3o0001rhsow2y6mztv/">【Android training】文件共享</a>
     </h1>
   
 
@@ -651,8 +799,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2015/10/30/cjatc0vx50004pksom0uzxbu1/",
-        url: "http://Jhuan.coding.me/JHuan/2015/10/30/cjatc0vx50004pksom0uzxbu1/"
+        title: "http://Jhuan.coding.me/JHuan/2015/10/30/cjgc99x3o0001rhsow2y6mztv/",
+        url: "http://Jhuan.coding.me/JHuan/2015/10/30/cjgc99x3o0001rhsow2y6mztv/"
         });
       </script>
       <br>
@@ -669,10 +817,10 @@
 
 
   
-    <article id="hexo-Hexo使用笔记（一）" class="article article-type-hexo" itemscope itemprop="blogPost">
+    <article id="hexo-【Android training】引导到另一个APP" class="article article-type-hexo" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2015/10/15/cjatc0vws0000pkso5m2f8ag6/" class="article-date">
-  <time datetime="2015-10-15T12:12:22.000Z" itemprop="datePublished">2015-10-15</time>
+    <a href="/2015/10/30/cjgc99x3y0004rhso398c3fgn/" class="article-date">
+  <time datetime="2015-10-30T12:12:22.000Z" itemprop="datePublished">2015-10-30</time>
 </a>
     
   </div>
@@ -683,7 +831,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2015/10/15/cjatc0vws0000pkso5m2f8ag6/">Hexo使用笔记（一）</a>
+      <a class="article-title" href="/2015/10/30/cjgc99x3y0004rhso398c3fgn/">【Android training】引导到另一个APP</a>
     </h1>
   
 
@@ -691,43 +839,24 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>使用hexo的初衷很简单，别人家的博客系统要么界面low逼要么内容low逼，一旦有运营介入肯定就有广告。个人并不反对广告，但对于强插的中插广告或者大条幅的广告简直这种强奸眼球的做法是不能忍的。而且更多的目的是边学边用，深入浅出的用一个工具，比直接硬啃html+js+css+balalala….好玩的多。当时选择做程序员，图的就是好玩嘛~</p>
-<h2 id="Hexo简介"><a href="#Hexo简介" class="headerlink" title="Hexo简介"></a>Hexo简介</h2><p>Hexo官网的一句概括：（Hexo官网网址：<a href="https://hexo.io/）" target="_blank" rel="noopener">https://hexo.io/）</a></p>
+        <p>Android最重要的一个特性就是可以通过action引导到其他APP里去了。比如说你想在你的APP中将一些地址显示在地图上，你无需专门搞个activity显示地图，你可以用带有地址信息的Intent发起请求，Android系统就会拉起一个APP去做到这点。</p>
+<h2 id="用隐式Intent"><a href="#用隐式Intent" class="headerlink" title="用隐式Intent"></a>用隐式Intent</h2><p>隐式Intent无需你指定具体的Class，把指定的action(比如view, edit, send, or get)，再把数据带上就欧啦。</p>
+<p>以下是一些例子：<br><figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//打电话</span></span><br><span class="line"><span class="built_in">Uri</span> number = <span class="built_in">Uri</span>.parse(<span class="string">"tel:5551234"</span>);</span><br><span class="line">Intent callIntent = <span class="keyword">new</span> Intent(Intent.ACTION_DIAL, number);</span><br><span class="line"><span class="comment">//用地图</span></span><br><span class="line"><span class="built_in">Uri</span> location = <span class="built_in">Uri</span>.parse(<span class="string">"geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California"</span>);</span><br><span class="line"><span class="built_in">Uri</span> location = <span class="built_in">Uri</span>.parse(<span class="string">"geo:37.422219,-122.08364?z=14"</span>); </span><br><span class="line">Intent mapIntent = <span class="keyword">new</span> Intent(Intent.ACTION_VIEW, location);</span><br><span class="line"><span class="comment">//浏览网页</span></span><br><span class="line"><span class="built_in">Uri</span> webpage = <span class="built_in">Uri</span>.parse(<span class="string">"http://www.android.com"</span>);</span><br><span class="line">Intent webIntent = <span class="keyword">new</span> Intent(Intent.ACTION_VIEW, webpage);</span><br></pre></td></tr></table></figure></p>
+<h2 id="看看有没应用可以接受俺们的Intent"><a href="#看看有没应用可以接受俺们的Intent" class="headerlink" title="看看有没应用可以接受俺们的Intent"></a>看看有没应用可以接受俺们的Intent</h2><p>尽管Android系统保证肯定有个内置应用（比如电话，电邮，日历等）会接受俺们的Intent,但你始终应该在使用这个Intent之前要确认下。</p>
 <blockquote>
-<p>Hexo 是一个快速、简洁且高效的博客框架。Hexo 使用<a href="http://daringfireball.net/projects/markdown/" target="_blank" rel="noopener">Markdown</a>（或其他渲染引擎）解析文章，在几秒内，即可利用靓丽的主题生成静态网页。</p>
+<p>注意：如果你作死使用了一个根本没有应用能接受的Intent，你的APP会Crash的！(ノಠ益ಠ)ノ彡┻━┻</p>
 </blockquote>
-<p><strong>Hexo的本质就是工具集成，集Markdown渲染、插件开发与远程部署的一个炫酷工具。</strong>用来做一个简单优雅的静态博客就非常适合，如果想要炫酷到没朋友请用WordPress~</p>
-<p>顺便贴下作者的一篇博客感受下这位ACG爱好者的才（dou）气（bi）：<a href="http://zespia.tw/blog/2012/10/11/hexo-debut/" target="_blank" rel="noopener">Hexo 颯爽登場！</a></p>
-<h2 id="Hexo安装"><a href="#Hexo安装" class="headerlink" title="Hexo安装"></a>Hexo安装</h2><p>首先，你得有个…..<br>不用女朋友啦别哭，就这些：<br><a href="http://nodejs.org/" target="_blank" rel="noopener">Node.js</a><br><a href="http://git-scm.com/" target="_blank" rel="noopener">Git</a></p>
-<p>OK,装完后我们就帅气的用以下命令解决：<br><code>$npm install -g hexo-cli</code></p>
-<p>然后就搞定了，简直不能再帅…</p>
-<h2 id="Hexo-的HelloWorld"><a href="#Hexo-的HelloWorld" class="headerlink" title="Hexo 的HelloWorld"></a>Hexo 的HelloWorld</h2><p>由于先不急着了解Hexo的配置文件与目录结构，先把基本过程过一遍先~工具是先学会使用才去研究原理滴~<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"><span class="comment">#建站</span></span></span><br><span class="line"><span class="meta">$</span><span class="bash"> hexo init &lt;folder&gt;</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">cd</span> &lt;folder&gt;</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> npm install</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"><span class="comment">#生成</span></span></span><br><span class="line"><span class="meta">$</span><span class="bash"> hexo generate</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> npm install hexo-server --save</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> hexo server</span></span><br></pre></td></tr></table></figure></p>
-<p>在浏览器中打开<a href="http://127.0.0.1:4000" target="_blank" rel="noopener">http://127.0.0.1:4000</a>,~duang~<br>PS：重点说下hexo-server这个坑，由于网上很多教程是针对hexo 2.0，所以3.0以上的童鞋注意下。</p>
-<h2 id="Hexo-部署到gitcafe"><a href="#Hexo-部署到gitcafe" class="headerlink" title="Hexo 部署到gitcafe"></a>Hexo 部署到gitcafe</h2><p>OK，本地环境妥妥的了~就可以考虑部署了。我选择gitcafe只因为速度问题大家懂得~</p>
-<ol>
-<li>注册gitcafe账号<br>这个自己整….</li>
-<li>新建一个与自己用户名相同名字的项目<br>不要像我一样为了炫酷取个与用户名不同的项目…否则会很麻烦。gitcafe的pages服务默认就是以用户名同名的项目。</li>
-<li><p>生成gitcafe的SSH key<br>这样你可以在~/.ssh下看到gitcafe，gitcafe.pub了</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> mkdir ~/.ssh</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> ssh-keygen -t rsa -C <span class="string">"你的邮箱@xxx.com"</span> -f ~/.ssh/gitcafe</span></span><br></pre></td></tr></table></figure>
-</li>
-<li><p>连接配置<br>首先创建一个配置文件先~    然后加上以下语句：<br>Host gitcafe.com www.gitcafe.com<br>IdentityFile ~/.ssh/gitcafe</p>
-<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$touch</span> ~<span class="regexp">/.ssh/</span>config</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>gitcafe上设置部署key<br>将~/.ssh/文件夹下的GitCafe.pub中的内容复制到公钥框中即可。</p>
-</li>
-<li><p>修改_config.yml<br>在末尾加上以下语句</p>
-<figure class="highlight less"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">deploy</span>:</span><br><span class="line">  <span class="attribute">type</span>: git</span><br><span class="line">  <span class="attribute">repo</span>: <span class="attribute">https</span>:<span class="comment">//gitcafe.com/JHuan/JHuan.git,gitcafe-pages</span></span><br></pre></td></tr></table></figure>
-<p>在hexo 3.0 type以后就只有git了没有github和gitcafe之分~</p>
-</li>
-<li>部署！<br>终于等到你我还好没放弃<br><code>hexo d</code><br>如果一切顺利，你可以通过<a href="http://你的用户名.gitcafe.io访问你的博客了！" target="_blank" rel="noopener">http://你的用户名.gitcafe.io访问你的博客了！</a></li>
-</ol>
-<h2 id="那些坑"><a href="#那些坑" class="headerlink" title="那些坑"></a>那些坑</h2><p>如果你一切都顺利那祝贺你可以开始愉快的和hexo玩耍了<br>如果你也不幸跟我一样踩坑了，看看以下有没能够帮助你的：</p>
-<ol>
-<li><p>记得挂代理….<br>感谢党感谢人民感谢GFW连npm都要帮我们墙掉那是有多爱我们。<br><code>$npm config set proxy=http://192.168.1.1:8080</code><br>具体端口和代理地址请自行替换哈<br>在公司办公网的童鞋记得ssh和git bash也要挂上代理哈</p>
-</li>
-<li><p>请勿在cmd中使用hexo<br>如果你也跟我一样还在悲催的使用windows做开发，请记得在gitbash中使用hexo。如若不信你可以试下hexo deploy。</p>
-</li>
-</ol>
+<p>调用queryIntentActivities()就可以获得能接受你的Intent的应用列表，如果返回的不是空列表你就能安心使用这个Intent啦，(^o^)/YES!<br><figure class="highlight ebnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">PackageManager packageManager</span> = getPackageManager();</span><br><span class="line"><span class="attribute">List activities</span> = packageManager.queryIntentActivities(intent,</span><br><span class="line">        PackageManager.MATCH_DEFAULT_ONLY);</span><br><span class="line"><span class="attribute">boolean isIntentSafe</span> = activities.size() &gt; 0;</span><br></pre></td></tr></table></figure></p>
+<p>如果isIntent是true，那就至少有一个应用能接受你的Intent啦</p>
+<p>##用你的Intent拉起一个Activity</p>
+<p>当你创建好Intent塞进了数据之后，便可以调用startActivity了。如果系统识别到有多个APP可以处理你的Intent,系统会展示一个对话框供用户选择哪个APP打开，如果只有一个APP能处理你的Intent，那就会立刻被打开。</p>
+<p><img src="http://developer.android.com/images/training/basics/intents-choice.png" alt="pic 1" title="pic1:供你选择拉起的APP对话框长这样~"></p>
+<p>以下是个完整的例子，演示如何创建一个可以拉起地图应用的intent，然后退出应用拉起地图：</p>
+<figure class="highlight pony"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Build the intent</span></span><br><span class="line"><span class="type">Uri</span> location = <span class="type">Uri</span>.parse(<span class="string">"geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California"</span>);</span><br><span class="line"><span class="type">Intent</span> mapIntent = <span class="function"><span class="keyword">new</span> <span class="title">Intent</span>(<span class="type">Intent</span>.<span class="type">ACTION_VIEW</span>, location);</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">// Verify it resolves</span></span></span><br><span class="line"><span class="function"><span class="title">PackageManager</span> <span class="title">packageManager</span> = <span class="title">getPackageManager</span>();</span></span><br><span class="line"><span class="function"><span class="title">List</span>&lt;<span class="title">ResolveInfo</span>&gt; <span class="title">activities</span> = <span class="title">packageManager</span>.<span class="title">queryIntentActivities</span>(mapIntent, <span class="number">0</span>);</span></span><br><span class="line"><span class="function"><span class="title">boolean</span> <span class="title">isIntentSafe</span> = <span class="title">activities</span>.<span class="title">size</span>() &gt; 0;</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">// Start an activity if it's safe</span></span></span><br><span class="line"><span class="function"><span class="title">if</span> (isIntentSafe) &#123;</span></span><br><span class="line"><span class="function">    <span class="title">startActivity</span>(mapIntent);</span></span><br><span class="line"><span class="function">&#125;</span></span><br></pre></td></tr></table></figure>
+<p><img src="http://developer.android.com/images/training/basics/intent-chooser.png" alt="pic 2"></p>
+<h2 id="显示一个应用选择对话框"><a href="#显示一个应用选择对话框" class="headerlink" title="显示一个应用选择对话框"></a>显示一个应用选择对话框</h2><p>可以注意得到当你使用startActivity（）将你的Intent传递到另一个app并且不止一个app可以接收你的Intent时，用户可以通过一个应用选择对话框来决定使用哪个应用，并且能够选择哪个应用作为默认打开方式。如果场景是浏览网页或者拍照那还是个不错的选择。</p>
+<p>但是，有些场景可能用户更需要每次都使用不同的app作为打开方式，比如说“分享”。这时你应该强制显示应用选择对话框让用户每次打开时选择使用哪个APP。</p>
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Intent intent = <span class="keyword">new</span> Intent(Intent.ACTION_SEND);</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="comment">// Always use string resources for UI text.</span></span><br><span class="line"><span class="comment">// This says something like "Share this photo with"</span></span><br><span class="line"><span class="keyword">String</span> <span class="built_in">title</span> = getResources().getString(R.<span class="keyword">string</span>.chooser_title);</span><br><span class="line"><span class="comment">// Create intent to show chooser</span></span><br><span class="line">Intent chooser = Intent.createChooser(intent, <span class="built_in">title</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Verify the intent will resolve to at least one activity</span></span><br><span class="line"><span class="keyword">if</span> (intent.resolveActivity(getPackageManager()) != <span class="built_in">null</span>) &#123;</span><br><span class="line">    startActivity(chooser);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
       
     </div>
@@ -747,8 +876,8 @@
 </div>
       <script type="text/javascript" charset="utf-8">
         bShare.addEntry({
-        title: "http://Jhuan.coding.me/JHuan/2015/10/15/cjatc0vws0000pkso5m2f8ag6/",
-        url: "http://Jhuan.coding.me/JHuan/2015/10/15/cjatc0vws0000pkso5m2f8ag6/"
+        title: "http://Jhuan.coding.me/JHuan/2015/10/30/cjgc99x3y0004rhso398c3fgn/",
+        url: "http://Jhuan.coding.me/JHuan/2015/10/30/cjgc99x3y0004rhso398c3fgn/"
         });
       </script>
       <br>
@@ -756,6 +885,8 @@
       <br>
       
       
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Android-training-翻译/">Android training 翻译</a></li></ul>
+
     </footer>
   </div>
   
@@ -763,6 +894,10 @@
 
 
   
+  
+    <nav id="page-nav">
+      <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+    </nav>
   
 </section>
         
@@ -774,7 +909,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Android-training-翻译/">Android training 翻译</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/感悟/">感悟</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/游戏/">游戏</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/电影人生/">电影人生</a><span class="tag-list-count">1</span></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Android/">Android</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Android-training-翻译/">Android training 翻译</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/感悟/">感悟</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/游戏/">游戏</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/电影人生/">电影人生</a><span class="tag-list-count">1</span></li></ul>
     </div>
   </div>
 
@@ -783,7 +918,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Android-training-翻译/" style="font-size: 20px;">Android training 翻译</a> <a href="/tags/感悟/" style="font-size: 10px;">感悟</a> <a href="/tags/游戏/" style="font-size: 10px;">游戏</a> <a href="/tags/电影人生/" style="font-size: 10px;">电影人生</a>
+      <a href="/tags/Android/" style="font-size: 15px;">Android</a> <a href="/tags/Android-training-翻译/" style="font-size: 20px;">Android training 翻译</a> <a href="/tags/感悟/" style="font-size: 10px;">感悟</a> <a href="/tags/游戏/" style="font-size: 10px;">游戏</a> <a href="/tags/电影人生/" style="font-size: 10px;">电影人生</a>
     </div>
   </div>
 
@@ -792,7 +927,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">十一月 2017</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">五月 2016</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">十一月 2015</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/10/">十月 2015</a><span class="archive-list-count">3</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">一月 2018</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/11/">十一月 2017</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">八月 2017</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/05/">五月 2016</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">二月 2016</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/11/">十一月 2015</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/10/">十月 2015</a><span class="archive-list-count">3</span></li></ul>
     </div>
   </div>
 
@@ -804,23 +939,23 @@
       <ul>
         
           <li>
-            <a href="/2017/11/28/cjatc0vx80006pkso7ahyvpam/">(no title)</a>
+            <a href="/2018/01/03/cjgc9hck300006csob4ju9oft/">挖VerticalViewPager+RecyclerView滑动冲突的祖坟！</a>
           </li>
         
           <li>
-            <a href="/2016/05/24/cjatc0vxd000dpksot5gocg5m/">谈谈那个大圣的背影</a>
+            <a href="/2017/11/28/cjgc99x45000arhso481vz0pb/">真相</a>
           </li>
         
           <li>
-            <a href="/2016/02/04/cjatc0vxa0009pksox65vlt6f/">晦涩的成人寓言——斯坦利的寓言</a>
+            <a href="/2017/08/03/cjgc9so7u0000c2souf4ork0o/">你用的那个Sort还是当初你认识的那个sort么？</a>
           </li>
         
           <li>
-            <a href="/2016/02/03/cjatc0vxb000apksotgrg73ga/">【Android training】高效展示你的Bitmap（上）</a>
+            <a href="/2016/05/24/cjgc99x46000drhso77o6dw2d/">谈谈那个大圣的背影</a>
           </li>
         
           <li>
-            <a href="/2015/12/24/cjatc0vx70005pksoa0u03exh/">序</a>
+            <a href="/2016/02/04/cjgc99x410006rhso6fs8sb4l/">晦涩的成人寓言——斯坦利的寓言</a>
           </li>
         
       </ul>
@@ -835,7 +970,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2017 barryjiang<br>
+      &copy; 2018 barryjiang<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
      <div class="share">
